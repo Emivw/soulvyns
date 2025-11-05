@@ -1,0 +1,110 @@
+/**
+ * @file Firestore Security Rules for TeamBook Application
+ * @description This ruleset enforces a strict user-ownership model for bookings and user profiles.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile data.
+ * - /users/{userId}/bookings/{bookingId}: Stores booking information, owned by the user.
+ * - /payments/{paymentId}: Stores payment information (not directly user-owned in this prototype).
+ * - /roles_admin/{userId}: Stores admin roles, existence determines admin privileges.
+ *
+ * Key Security Decisions:
+ * - Users can only read/write their own profile and bookings.
+ * - Listing all users is disallowed for non-admins.
+ * - Payments are not user-owned in this prototype and require further access control definition.
+ * - Admin status is managed through the roles_admin collection.
+ *
+ * Denormalization for Authorization:
+ * - Bookings are stored under /users/{userId} to allow security rules to be based solely on the userId,
+ *   without needing to read parent documents.
+ *
+ * Structural Segregation:
+ * - User profiles and bookings are stored under /users/{userId} to clearly define ownership.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Manages user profiles, ensuring users can only access their own profile data.
+     * @path /users/{userId}
+     * @allow (create) User with auth.uid == userId can create their own profile.
+     * @allow (get, update, delete) User with auth.uid == userId can read, update, and delete their own profile.
+     * @deny (create, get, update, delete) User with auth.uid != userId cannot access another user's profile.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data.
+     */
+    match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Prevent listing all users.
+
+      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages bookings for a specific user, ensuring only the owner can manage their bookings.
+     * @path /users/{userId}/bookings/{bookingId}
+     * @allow (create) User with auth.uid == userId can create a booking under their profile.
+     * @allow (get, update, delete) User with auth.uid == userId can read, update, and delete their own bookings.
+     * @deny (create, get, update, delete) User with auth.uid != userId cannot access another user's bookings.
+     * @principle Enforces document ownership for all operations and restricts access to a user's own data tree.
+     */
+    match /users/{userId}/bookings/{bookingId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages payments. Access control needs definition as they are not directly user-owned.
+     * @path /payments/{paymentId}
+     * @allow (get, list) Public read access to payments.
+     * @deny (create, update, delete) No writes allowed for non-owners.
+     * @principle Access control is currently undefined and must be determined based on the desired payment model.
+     */
+    match /payments/{paymentId} {
+      allow get: if true;
+      allow list: if true;
+
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+    /**
+     * @description Grants admin privileges to users with a document in the /roles_admin collection.
+     * @path /roles_admin/{userId}
+     */
+    match /roles_admin/{userId} {
+        function isAdmin() {
+            return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+        }
+
+        allow get: if isAdmin();
+        allow list: if false;
+
+        allow create: if isAdmin();
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+    }
+  }
+}

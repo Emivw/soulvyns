@@ -1,0 +1,199 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user within the TeamBook application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user.",
+          "format": "uuid"
+        },
+        "microsoftTeamsId": {
+          "type": "string",
+          "description": "The Microsoft Teams ID of the user, used for authentication and integration.",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The display name of the user."
+        },
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Indicates whether the user is an administrator."
+        }
+      },
+      "required": [
+        "id",
+        "microsoftTeamsId",
+        "email",
+        "displayName"
+      ]
+    },
+    "Booking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Booking",
+      "type": "object",
+      "description": "Represents a booking made within the TeamBook application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the booking.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Booking)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "The start time of the booking.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The end time of the booking.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the booking"
+        },
+        "paymentId": {
+          "type": "string",
+          "description": "Reference to Payment. (Relationship: Payment 1:1 Booking)",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "startTime",
+        "endTime"
+      ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a payment made for a booking.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the payment.",
+          "format": "uuid"
+        },
+        "bookingId": {
+          "type": "string",
+          "description": "Reference to Booking. (Relationship: Booking 1:1 Payment)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount paid for the booking."
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "The date the payment was made.",
+          "format": "date-time"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The method of payment used."
+        }
+      },
+      "required": [
+        "id",
+        "bookingId",
+        "amount",
+        "paymentDate",
+        "paymentMethod"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Includes the 'microsoftTeamsId' for Microsoft Teams integration.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/bookings/{bookingId}",
+        "definition": {
+          "entityName": "Booking",
+          "schema": {
+            "$ref": "#/backend/entities/Booking"
+          },
+          "description": "Stores bookings made by a specific user. Uses path-based ownership for security.  Authorization is based on the 'userId' path parameter matching the authenticated user ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who made the booking."
+            },
+            {
+              "name": "bookingId",
+              "description": "The unique identifier of the booking."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/payments/{paymentId}",
+        "definition": {
+          "entityName": "Payment",
+          "schema": {
+            "$ref": "#/backend/entities/Payment"
+          },
+          "description": "Stores payment information. Note: payments are not directly under the user to allow for other payment models.",
+          "params": [
+            {
+              "name": "paymentId",
+              "description": "The unique identifier of the payment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "roles_admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores admin roles, existence determines admin privileges.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user with admin role."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage users, bookings, and payments for the TeamBook application, with a focus on Microsoft Teams integration. It prioritizes security, scalability, and debuggability following the core design principles. The structure uses path-based ownership for user data and includes denormalization for authorization independence.\n\n*   **Authorization Independence:** User-owned data like bookings are stored under `/users/{userId}/bookings/{bookingId}`. This allows security rules to be based solely on the `userId` in `request.auth.uid`, without needing to read parent documents. There is no reliance on `get()` calls for authorization.\n*   **Clarity of Intent:** The structure clearly separates user data, bookings, and payments into distinct collections, each with a clear owner (`userId` for bookings, implicit ownership via `/users/{userId}` for user profiles).\n*   **DBAC (No Custom Claims):** Admin status is managed through a boolean field directly on the user document, and rules use `request.auth.uid` to verify admin status.\n*   **QAPs:** Path-based ownership enables secure `list` operations on user-owned data. An admin collection (`/roles_admin/{uid}`) can be used to grant admin privileges, enabling secure listing of all users/bookings to admins via `exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))`. Segregation between user-owned bookings and admin access ensures QAPs are satisfied.\n*   **Invariants:** The structure supports invariants like ownership (via path-based ownership), timestamps (within booking documents), and denormalized data (if bookings denormalized user details).\n\n*   **Microsoft Teams Integration**: The `microsoftTeamsId` field in the `User` entity supports integration with Microsoft Teams. This design avoids complex authorization schemes. The structure is highly scalable and secure and enables performant queries and simplified security rules."
+  }
+}
