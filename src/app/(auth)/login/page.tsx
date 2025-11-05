@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Code, KeyRound, Loader2 } from 'lucide-react'
-import { MicrosoftAuthProvider, signInWithPopup } from 'firebase/auth';
+import { OAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
 
@@ -31,7 +31,7 @@ export default function LoginPage() {
         setIsLoading(false);
         return;
     }
-    const provider = new MicrosoftAuthProvider();
+    const provider = new OAuthProvider('microsoft.com');
     try {
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
