@@ -32,6 +32,10 @@ export default function LoginPage() {
         return;
     }
     const provider = new OAuthProvider('microsoft.com');
+    provider.setCustomParameters({
+      // Use 'common' for multi-tenant apps, or a specific tenant ID.
+      tenant: 'common',
+    });
     try {
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
