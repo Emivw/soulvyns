@@ -9,8 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Code, KeyRound, Loader2 } from 'lucide-react'
-import { OAuthProvider, signInWithPopup } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { OAuthProvider, signInWithRedirect } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 
 const MicrosoftIcon = () => (
@@ -21,7 +20,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
-  const router = useRouter();
 
   const handleMicrosoftSignIn = async () => {
     setIsLoading(true);
@@ -37,8 +35,7 @@ export default function LoginPage() {
       tenant: 'common',
     });
     try {
-      await signInWithPopup(auth, provider);
-      router.push('/dashboard');
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
       setError(error.message);
       console.error("Error signing in with Microsoft", error);
