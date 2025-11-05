@@ -1,3 +1,40 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "user-1",
+      "description": "Avatar for Sarah Lee",
+      "imageUrl": "https://i.pravatar.cc/150?u=sarahlee",
+      "imageHint": "woman avatar"
+    },
+    {
+      "id": "user-2",
+      "description": "Avatar for John Doe",
+      "imageUrl": "https://i.pravatar.cc/150?u=johndoe",
+      "imageHint": "man avatar"
+    },
+    {
+      "id": "user-3",
+      "description": "Avatar for Emily Chen",
+      "imageUrl": "https://i.pravatar.cc/150?u=emilychen",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "user-4",
+      "description": "Avatar for Michael Brown",
+      "imageUrl": "https://i.pravatar.cc/150?u=michaelbrown",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "user-5",
+      "description": "Avatar for Jessica Williams",
+      "imageUrl": "https://i.pravatar.cc/150?u=jessicawilliams",
+      "imageHint": "female avatar"
+    },
+    {
+      "id": "user-6",
+      "description": "Avatar for David Garcia",
+      "imageUrl": "https://i.pravatar.cc/150?u=davidgarcia",
+      "imageHint": "male avatar"
+    }
+  ]
 }
